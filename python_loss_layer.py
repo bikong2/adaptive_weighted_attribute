@@ -69,9 +69,9 @@ class TrainValWeightedEuclideanLossLayer(caffe.Layer):
 
     def forward(self, bottom, top):
         self.diff[...] = bottom[0].data - bottom[1].data
-        self.val_loss.append(np.sum(self.diff[self.batch:]**2, axis=0))
-        top[0].data[...] = np.sum(self.diff[0:self.batch]**2) / self.batch / 2.
-        self.count += 1
+        self.val_loss.append(np.sum(self.diff[self.batch:]**2, axis=0))         # val
+        top[0].data[...] = np.sum(self.diff[0:self.batch]**2) / self.batch / 2. # train
+        self.count += 1 # forward times
 
     def backward(self, top, propagate_down, bottom):
         for i in range(2):
@@ -81,11 +81,15 @@ class TrainValWeightedEuclideanLossLayer(caffe.Layer):
                 sign = 1
             else:
                 sign = -1
+            
+            # forward times==interval
+            # get pre_val_mean
             if self.count == self.interval:
                 self.pre_val_mean = np.mean(self.val_loss[0:self.interval], axis=0)
             if self.count >= 2 * self.interval and self.count % self.interval == 0:
                 begin_index = self.count - self.interval
                 end_index = self.count
+                # cur_val_mean
                 cur_val_mean = np.mean(self.val_loss[begin_index:end_index], axis=0)
                 trend = abs(cur_val_mean - self.pre_val_mean) / cur_val_mean
                 self.norm_trend = trend / np.mean(trend)
